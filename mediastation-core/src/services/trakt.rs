@@ -12,7 +12,7 @@ pub struct TraktService {
 impl TraktService {
     pub fn new(config: AppConfig) -> Self {
         let client = reqwest::Client::builder()
-            .user_agent("MediaStation/1.0")
+            .user_agent("RustyFin/1.0")
             .timeout(std::time::Duration::from_secs(15))
             .build()
             .unwrap_or_default();

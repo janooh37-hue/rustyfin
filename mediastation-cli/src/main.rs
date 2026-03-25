@@ -1,13 +1,13 @@
-//! MediaStation CLI - Entry point for the TUI application
+//! RustyFin CLI - Entry point for the TUI application
 
 use clap::Parser;
 use log::info;
 
-/// CLI arguments for MediaStation
+/// CLI arguments for RustyFin
 #[derive(Parser, Debug)]
-#[command(name = "mediastation")]
-#[command(version = "0.1.0")]
-#[command(about = "A TUI application for managing your Jellyfin media server", long_about = None)]
+#[command(name = "rustyfin")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
+#[command(about = "RustyFin - A TUI application for managing your Jellyfin media server", long_about = None)]
 pub struct Args {
     /// Config file path (default: ~/.moviewatch_project/config.json)
     #[arg(
@@ -36,7 +36,7 @@ fn main() -> anyhow::Result<()> {
     let log_file = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
-        .open(log_dir.join("mediastation.log"))
+        .open(log_dir.join("rustyfin.log"))
         .unwrap_or_else(|_| std::fs::File::create("/dev/null").unwrap());
 
     let log_level = match args.verbose {
@@ -48,7 +48,7 @@ fn main() -> anyhow::Result<()> {
         .target(env_logger::Target::Pipe(Box::new(log_file)))
         .init();
 
-    info!("Starting MediaStation v{}", env!("CARGO_PKG_VERSION"));
+    info!("Starting RustyFin v{}", env!("CARGO_PKG_VERSION"));
     info!("Using config: {}", args.config);
     info!("Theme: {}", args.theme);
 

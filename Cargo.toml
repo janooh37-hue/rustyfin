@@ -8,5 +8,5 @@ edition = "2021"
 authors = ["MediaStation Team"]
 license = "MIT"
 
-[workspace.metadata.mediastation]
+[workspace.metadata.rustyfin]
 description = "A TUI application for managing a self-hosted Jellyfin media server"

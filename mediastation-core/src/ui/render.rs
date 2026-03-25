@@ -43,7 +43,7 @@ pub fn render(f: &mut Frame, state: &mut AppState, theme: &Theme) {
 
 /// Render the header bar
 fn render_header(f: &mut Frame, area: Rect, _state: &mut AppState, theme: &Theme) {
-    let title = " MediaStation ";
+    let title = " RustyFin ";
     let help = " [?] Help ";
     let pad = area.width.saturating_sub(title.len() as u16 + help.len() as u16);
 
@@ -440,7 +440,10 @@ fn render_settings(f: &mut Frame, area: Rect, state: &mut AppState, theme: &Them
         Cell::from(Span::styled("Value", Style::default().fg(theme.primary).bold())),
     ]).height(1);
 
-    let rows: Vec<Row> = state.settings_entries.items.iter().map(|e| {
+    let is_editing = state.mode == AppMode::EditSetting;
+    let selected_idx = state.settings_entries.state.selected();
+
+    let rows: Vec<Row> = state.settings_entries.items.iter().enumerate().map(|(i, e)| {
         let key_style = if e.editable {
             Style::default().fg(theme.accent).bold()
         } else {
@@ -456,6 +459,30 @@ fn render_settings(f: &mut Frame, area: Rect, state: &mut AppState, theme: &Them
             Row::new(vec![
                 Cell::from(Span::styled(&e.key, Style::default().fg(theme.primary).bold())),
                 Cell::from(Span::raw("")),
+            ])
+        } else if is_editing && selected_idx == Some(i) && e.key == state.editing_setting_key {
+            // Show inline editing with cursor
+            let cursor_pos = state.editing_setting_cursor;
+            let val = &state.editing_setting_value;
+            let chars: Vec<char> = val.chars().collect();
+            let before: String = chars[..cursor_pos.min(chars.len())].iter().collect();
+            let cursor_char = if cursor_pos < chars.len() {
+                chars[cursor_pos].to_string()
+            } else {
+                " ".to_string()
+            };
+            let after: String = if cursor_pos < chars.len() {
+                chars[cursor_pos + 1..].iter().collect()
+            } else {
+                String::new()
+            };
+            Row::new(vec![
+                Cell::from(Span::styled(&e.key, key_style)),
+                Cell::from(Line::from(vec![
+                    Span::styled(before, Style::default().fg(theme.foreground)),
+                    Span::styled(cursor_char, Style::default().fg(theme.background).bg(theme.primary)),
+                    Span::styled(after, Style::default().fg(theme.foreground)),
+                ])),
             ])
         } else {
             Row::new(vec![
@@ -483,16 +510,21 @@ fn render_status_bar(f: &mut Frame, area: Rect, state: &mut AppState, theme: &Th
     let mode_str = match state.mode {
         AppMode::Search => " SEARCH ",
         AppMode::Help => " HELP ",
+        AppMode::EditSetting => " EDIT ",
         _ => "",
     };
-    let hints = match (state.focus, state.focused_panel) {
-        (Focus::Sidebar, _) => "↑↓:panels →:enter",
-        (Focus::Content, FocusedPanel::Downloads) => "d:del P:pause u:resume ←:back",
-        (Focus::Content, FocusedPanel::Search) => "/:search Enter:download ←:back",
-        (Focus::Content, FocusedPanel::Library) => "→:enter p:play S:subs i:info ←:back",
-        (Focus::Content, FocusedPanel::Organize) => "o:organize S:subs Enter:organize ←:back",
-        (Focus::Content, FocusedPanel::Watchlist) => "a:search Enter:search ←:back",
-        (Focus::Content, _) => "Enter:change ←:back",
+    let hints = if state.mode == AppMode::EditSetting {
+        "Enter:save Esc:cancel"
+    } else {
+        match (state.focus, state.focused_panel) {
+            (Focus::Sidebar, _) => "↑↓:panels →:enter",
+            (Focus::Content, FocusedPanel::Downloads) => "d:del P:pause u:resume ←:back",
+            (Focus::Content, FocusedPanel::Search) => "/:search Enter:download ←:back",
+            (Focus::Content, FocusedPanel::Library) => "→:enter p:play S:subs i:info ←:back",
+            (Focus::Content, FocusedPanel::Organize) => "o:organize S:subs Enter:organize ←:back",
+            (Focus::Content, FocusedPanel::Watchlist) => "a:search Enter:search ←:back",
+            (Focus::Content, FocusedPanel::Settings) => "Enter:edit ←:back",
+        }
     };
 
     let dl = format_speed(state.transfer_info.download_speed);

@@ -3,11 +3,13 @@
 pub mod config;
 pub mod models;
 pub mod services;
+pub mod setup;
 pub mod ui;
 
 use std::panic;
 
 use crate::config::AppConfig;
+use crate::setup::run_setup;
 use crate::ui::app::run_app;
 
 /// Run the TUI application
@@ -18,6 +20,9 @@ pub fn run_tui(config_path: &str, theme_name: &str) -> anyhow::Result<()> {
         log::error!("Application panic: {}", panic_info);
         default_panic(panic_info);
     }));
+
+    // Run first-run setup if no config file exists
+    run_setup(config_path)?;
 
     // Load configuration
     let config = AppConfig::load(config_path)?;

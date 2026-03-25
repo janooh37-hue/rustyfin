@@ -388,7 +388,15 @@ fn detect_torrent_type(name: &str) -> PendingType {
 }
 
 /// Build settings entries from config
+/// Reloads config from disk to ensure values reflect any recent changes
 fn build_settings_entries(state: &mut AppState, config: &Arc<AppConfig>) {
+    // Reload config from disk to pick up any changes written by save_setting_to_config
+    let config = if let Ok(fresh) = crate::config::AppConfig::load(config.config_path()) {
+        Arc::new(fresh)
+    } else {
+        config.clone()
+    };
+    let config = &config;
     let mut entries = Vec::new();
 
     // Theme section
@@ -444,22 +452,22 @@ fn build_settings_entries(state: &mut AppState, config: &Arc<AppConfig>) {
     entries.push(SettingsEntry {
         key: "Downloads".into(),
         value: config.paths.download_dir.clone(),
-        editable: false,
+        editable: true,
     });
     entries.push(SettingsEntry {
         key: "Movies Dir".into(),
         value: config.paths.movies_dir.clone(),
-        editable: false,
+        editable: true,
     });
     entries.push(SettingsEntry {
         key: "Shows Dir".into(),
         value: config.paths.shows_dir.clone(),
-        editable: false,
+        editable: true,
     });
     entries.push(SettingsEntry {
         key: "Anime Dir".into(),
         value: config.paths.anime_dir.clone(),
-        editable: false,
+        editable: true,
     });
 
     // Quality section
@@ -471,22 +479,22 @@ fn build_settings_entries(state: &mut AppState, config: &Arc<AppConfig>) {
     entries.push(SettingsEntry {
         key: "Priority".into(),
         value: config.settings.quality_priority.join(", "),
-        editable: false,
+        editable: true,
     });
     entries.push(SettingsEntry {
         key: "Max Size".into(),
-        value: format!("{} GB", config.settings.max_size_gb),
-        editable: false,
+        value: format!("{}", config.settings.max_size_gb),
+        editable: true,
     });
     entries.push(SettingsEntry {
         key: "Min Seeds".into(),
         value: format!("{}", config.settings.min_seeds),
-        editable: false,
+        editable: true,
     });
     entries.push(SettingsEntry {
         key: "Avoid CAM".into(),
         value: if config.settings.avoid_cam { "Yes" } else { "No" }.into(),
-        editable: false,
+        editable: true,
     });
 
     // Search Indexers section
@@ -512,18 +520,47 @@ fn build_settings_entries(state: &mut AppState, config: &Arc<AppConfig>) {
         editable: false,
     });
     entries.push(SettingsEntry {
-        key: "qBittorrent".into(),
+        key: "qBit Host".into(),
         value: config.qbittorrent.host.to_string(),
-        editable: false,
+        editable: true,
+    });
+    entries.push(SettingsEntry {
+        key: "qBit User".into(),
+        value: if config.qbittorrent.username.is_empty() {
+            "Not set".into()
+        } else {
+            config.qbittorrent.username.to_string()
+        },
+        editable: true,
+    });
+    entries.push(SettingsEntry {
+        key: "qBit Pass".into(),
+        value: if config.qbittorrent.password.is_empty() {
+            "Not set".into()
+        } else {
+            "\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}".into()
+        },
+        editable: true,
     });
     entries.push(SettingsEntry {
         key: "Trakt User".into(),
         value: if config.trakt.username.is_empty() {
-            "Not configured".into()
+            "Not set".into()
         } else {
             config.trakt.username.to_string()
         },
-        editable: false,
+        editable: true,
+    });
+    entries.push(SettingsEntry {
+        key: "Trakt ID".into(),
+        value: if config.trakt.client_id.is_empty() {
+            "Not set".into()
+        } else if config.trakt.client_id.len() > 12 {
+            format!("{}...", &config.trakt.client_id[..12])
+        } else {
+            config.trakt.client_id.to_string()
+        },
+        editable: true,
     });
 
     state.settings_entries.update(entries);
@@ -549,6 +586,7 @@ fn handle_key_event<B: ratatui::backend::Backend + io::Write>(
         AppMode::Help => handle_help_mode(key, state),
         AppMode::Normal => handle_normal_mode(key, state, config, qbit, library, search, organize, trakt, subtitle, rt, terminal, theme),
         AppMode::Confirm => { handle_confirm_mode(key, state, qbit, rt); false }
+        AppMode::EditSetting => { handle_edit_setting_mode(key, state, config); false }
         _ => false,
     }
 }
@@ -917,6 +955,13 @@ fn handle_enter_action<B: ratatui::backend::Backend + io::Write>(
                     state.set_status(format!("Theme changed to: {}", new_theme_name));
                     build_settings_entries(state, config);
                     state.needs_clear = true;
+                } else if entry.editable && entry.key == "Avoid CAM" {
+                    // Toggle boolean
+                    let new_val = entry.value != "Yes";
+                    save_setting_to_config(config, "Avoid CAM", if new_val { "Yes" } else { "No" });
+                    state.set_status(format!("Avoid CAM: {}", if new_val { "Yes" } else { "No" }));
+                    build_settings_entries(state, config);
+                    state.needs_clear = true;
                 } else if entry.editable {
                     // Check if it's a search indexer toggle
                     let key = entry.key.clone();
@@ -930,6 +975,31 @@ fn handle_enter_action<B: ratatui::backend::Backend + io::Write>(
                         state.set_status(format!("{}: {}", key, status));
                         build_settings_entries(state, config);
                         state.needs_clear = true;
+                    } else {
+                        // Enter edit mode for this setting
+                        let key = entry.key.clone();
+                        // Resolve the actual config value (not the display value)
+                        let current_value = match key.as_str() {
+                            "qBit Pass" => config.qbittorrent.password.clone(),
+                            "qBit User" => config.qbittorrent.username.clone(),
+                            "qBit Host" => config.qbittorrent.host.clone(),
+                            "Trakt User" => config.trakt.username.clone(),
+                            "Trakt ID" => config.trakt.client_id.clone(),
+                            "Max Size" => format!("{}", config.settings.max_size_gb),
+                            "Min Seeds" => format!("{}", config.settings.min_seeds),
+                            "Priority" => config.settings.quality_priority.join(", "),
+                            "Movies Dir" => config.paths.movies_dir.clone(),
+                            "Shows Dir" => config.paths.shows_dir.clone(),
+                            "Anime Dir" => config.paths.anime_dir.clone(),
+                            "Downloads" => config.paths.download_dir.clone(),
+                            _ => entry.value.clone(),
+                        };
+                        let cursor = current_value.len();
+                        state.editing_setting_key = key;
+                        state.editing_setting_value = current_value;
+                        state.editing_setting_cursor = cursor;
+                        state.set_mode(AppMode::EditSetting);
+                        state.set_status("Editing... Enter to save, Esc to cancel");
                     }
                 }
             }
@@ -958,6 +1028,175 @@ fn toggle_search_indexer(state: &mut AppState, config: &Arc<AppConfig>, indexer:
             let _ = std::fs::write(config_path, serde_json::to_string_pretty(&json).unwrap_or_default());
         }
     }
+}
+
+/// Handle keys in EditSetting mode - inline text editing of a setting value
+fn handle_edit_setting_mode(
+    key: crossterm::event::KeyEvent,
+    state: &mut AppState,
+    config: &Arc<AppConfig>,
+) {
+    use crossterm::event::KeyCode;
+    match key.code {
+        KeyCode::Esc => {
+            // Cancel editing
+            state.set_mode(AppMode::Normal);
+            state.editing_setting_key.clear();
+            state.editing_setting_value.clear();
+            state.editing_setting_cursor = 0;
+            state.set_status("Edit cancelled");
+        }
+        KeyCode::Enter => {
+            // Save the value
+            let key_name = state.editing_setting_key.clone();
+            let value = state.editing_setting_value.clone();
+            save_setting_to_config(config, &key_name, &value);
+            state.set_mode(AppMode::Normal);
+            state.set_status(format!("Saved: {} = {}", key_name, if key_name == "qBit Pass" { "******".to_string() } else { value }));
+            build_settings_entries(state, config);
+            state.editing_setting_key.clear();
+            state.editing_setting_value.clear();
+            state.editing_setting_cursor = 0;
+            state.needs_clear = true;
+        }
+        KeyCode::Backspace => {
+            if state.editing_setting_cursor > 0 {
+                let cursor = state.editing_setting_cursor;
+                // Remove char before cursor
+                let mut chars: Vec<char> = state.editing_setting_value.chars().collect();
+                if cursor <= chars.len() {
+                    chars.remove(cursor - 1);
+                    state.editing_setting_value = chars.into_iter().collect();
+                    state.editing_setting_cursor -= 1;
+                }
+            }
+        }
+        KeyCode::Delete => {
+            let cursor = state.editing_setting_cursor;
+            let mut chars: Vec<char> = state.editing_setting_value.chars().collect();
+            if cursor < chars.len() {
+                chars.remove(cursor);
+                state.editing_setting_value = chars.into_iter().collect();
+            }
+        }
+        KeyCode::Left => {
+            if state.editing_setting_cursor > 0 {
+                state.editing_setting_cursor -= 1;
+            }
+        }
+        KeyCode::Right => {
+            let len = state.editing_setting_value.chars().count();
+            if state.editing_setting_cursor < len {
+                state.editing_setting_cursor += 1;
+            }
+        }
+        KeyCode::Home => {
+            state.editing_setting_cursor = 0;
+        }
+        KeyCode::End => {
+            state.editing_setting_cursor = state.editing_setting_value.chars().count();
+        }
+        KeyCode::Char(c) => {
+            let cursor = state.editing_setting_cursor;
+            let mut chars: Vec<char> = state.editing_setting_value.chars().collect();
+            chars.insert(cursor, c);
+            state.editing_setting_value = chars.into_iter().collect();
+            state.editing_setting_cursor += 1;
+        }
+        _ => {}
+    }
+}
+
+/// Save a setting value to the config JSON file (read-modify-write pattern)
+fn save_setting_to_config(config: &Arc<AppConfig>, key: &str, value: &str) {
+    let config_path = config.config_path();
+    let content = match std::fs::read_to_string(config_path) {
+        Ok(c) => c,
+        Err(_) => return,
+    };
+    let mut json: serde_json::Value = match serde_json::from_str(&content) {
+        Ok(j) => j,
+        Err(_) => return,
+    };
+
+    match key {
+        "Movies Dir" => {
+            if let Some(paths) = json.get_mut("paths") {
+                paths["movies_dir"] = serde_json::Value::String(value.to_string());
+            }
+        }
+        "Shows Dir" => {
+            if let Some(paths) = json.get_mut("paths") {
+                paths["shows_dir"] = serde_json::Value::String(value.to_string());
+            }
+        }
+        "Anime Dir" => {
+            if let Some(paths) = json.get_mut("paths") {
+                paths["anime_dir"] = serde_json::Value::String(value.to_string());
+            }
+        }
+        "Downloads" => {
+            if let Some(paths) = json.get_mut("paths") {
+                paths["download_dir"] = serde_json::Value::String(value.to_string());
+            }
+        }
+        "qBit Host" => {
+            if let Some(qbit) = json.get_mut("qbittorrent") {
+                qbit["host"] = serde_json::Value::String(value.to_string());
+            }
+        }
+        "qBit User" => {
+            if let Some(qbit) = json.get_mut("qbittorrent") {
+                qbit["username"] = serde_json::Value::String(value.to_string());
+            }
+        }
+        "qBit Pass" => {
+            if let Some(qbit) = json.get_mut("qbittorrent") {
+                qbit["password"] = serde_json::Value::String(value.to_string());
+            }
+        }
+        "Trakt User" => {
+            if let Some(trakt) = json.get_mut("trakt") {
+                trakt["username"] = serde_json::Value::String(value.to_string());
+            }
+        }
+        "Trakt ID" => {
+            if let Some(trakt) = json.get_mut("trakt") {
+                trakt["client_id"] = serde_json::Value::String(value.to_string());
+            }
+        }
+        "Priority" => {
+            if let Some(settings) = json.get_mut("settings") {
+                let priorities: Vec<String> = value.split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+                settings["quality_priority"] = serde_json::json!(priorities);
+            }
+        }
+        "Max Size" => {
+            if let Some(settings) = json.get_mut("settings") {
+                if let Ok(n) = value.parse::<u32>() {
+                    settings["max_size_gb"] = serde_json::json!(n);
+                }
+            }
+        }
+        "Min Seeds" => {
+            if let Some(settings) = json.get_mut("settings") {
+                if let Ok(n) = value.parse::<u32>() {
+                    settings["min_seeds"] = serde_json::json!(n);
+                }
+            }
+        }
+        "Avoid CAM" => {
+            if let Some(settings) = json.get_mut("settings") {
+                settings["avoid_cam"] = serde_json::json!(value == "Yes");
+            }
+        }
+        _ => return,
+    }
+
+    let _ = std::fs::write(config_path, serde_json::to_string_pretty(&json).unwrap_or_default());
 }
 
 /// Handle organize action for the selected pending item

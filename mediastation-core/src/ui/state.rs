@@ -17,6 +17,8 @@ pub enum AppMode {
     Confirm,
     /// Running mode - executing an action
     Running,
+    /// Editing a setting value inline
+    EditSetting,
 }
 
 /// Two-level focus: sidebar (panel selection) vs content (item navigation)
@@ -286,6 +288,11 @@ pub struct AppState {
     /// Generic string data for confirm actions (e.g. torrent hash)
     pub confirm_data: Option<String>,
 
+    // Setting edit state
+    pub editing_setting_key: String,
+    pub editing_setting_value: String,
+    pub editing_setting_cursor: usize,
+
     // Status messages
     pub status_message: String,
     pub error_message: Option<String>,
@@ -331,6 +338,10 @@ impl AppState {
             confirm_message: String::new(),
             confirm_callback: None,
             confirm_data: None,
+
+            editing_setting_key: String::new(),
+            editing_setting_value: String::new(),
+            editing_setting_cursor: 0,
 
             status_message: "Ready".to_string(),
             error_message: None,
