@@ -495,12 +495,12 @@ fn build_settings_entries(state: &mut AppState, config: &Arc<AppConfig>) {
         value: String::new(),
         editable: false,
     });
-    let available_indexers = ["yts", "tpb", "1337x"];
-    for indexer in &available_indexers {
-        let enabled = state.search_indexers.iter().any(|i| i == indexer);
+    for info in crate::services::search::AVAILABLE_INDEXERS {
+        let enabled = state.search_indexers.iter().any(|i| i == info.id);
+        let status = if enabled { "ON" } else { "OFF" };
         entries.push(SettingsEntry {
-            key: indexer.to_string(),
-            value: if enabled { "Enabled (Enter to toggle)".into() } else { "Disabled (Enter to toggle)".into() },
+            key: info.id.to_string(),
+            value: format!("[{}] {} - {}", status, info.name, info.description),
             editable: true,
         });
     }
@@ -823,8 +823,8 @@ fn handle_normal_mode<B: ratatui::backend::Backend + io::Write>(
                         if let Some(item) = state.watchlist.selected() {
                             let query = item.title.clone();
                             let media_type = match item.media_type {
-                                crate::models::MediaType::Show => "tv",
-                                _ => "movie",
+                                crate::models::MediaType::Show | crate::models::MediaType::Anime => "tv",
+                                crate::models::MediaType::Movie => "movie",
                             };
                             state.focused_panel = FocusedPanel::Search;
                             state.search_query = query.clone();
@@ -919,11 +919,15 @@ fn handle_enter_action<B: ratatui::backend::Backend + io::Write>(
                     state.needs_clear = true;
                 } else if entry.editable {
                     // Check if it's a search indexer toggle
-                    let available_indexers = ["yts", "tpb", "1337x"];
                     let key = entry.key.clone();
-                    if available_indexers.contains(&key.as_str()) {
+                    let is_indexer = crate::services::search::AVAILABLE_INDEXERS
+                        .iter()
+                        .any(|info| info.id == key);
+                    if is_indexer {
                         toggle_search_indexer(state, config, &key);
-                        state.set_status(format!("Toggled indexer: {}", key));
+                        let enabled = state.search_indexers.iter().any(|i| i == &key);
+                        let status = if enabled { "enabled" } else { "disabled" };
+                        state.set_status(format!("{}: {}", key, status));
                         build_settings_entries(state, config);
                         state.needs_clear = true;
                     }

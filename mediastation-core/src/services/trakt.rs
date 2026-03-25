@@ -122,11 +122,80 @@ impl TraktService {
         }
     }
 
-    /// Get combined watchlist
+    /// Get anime watchlist from custom "anime" list
+    pub async fn get_anime_watchlist(&self) -> Vec<WatchlistItem> {
+        if self.config.trakt.username.is_empty() || self.config.trakt.client_id.is_empty() {
+            return Vec::new();
+        }
+
+        let url = format!(
+            "https://api.trakt.tv/users/{}/lists/anime/items",
+            self.config.trakt.username
+        );
+
+        match self
+            .client
+            .get(&url)
+            .header("Content-Type", "application/json")
+            .header("trakt-api-version", "2")
+            .header("trakt-api-key", &*self.config.trakt.client_id)
+            .send()
+            .await
+        {
+            Ok(response) if response.status().is_success() => {
+                match response.json::<serde_json::Value>().await {
+                    Ok(serde_json::Value::Array(items)) => {
+                        items
+                            .iter()
+                            .filter_map(|entry| {
+                                // Items in anime list can be "show" or "movie" type on Trakt
+                                let item_type = entry.get("type")?.as_str()?;
+                                let (title, year, slug) = match item_type {
+                                    "show" => {
+                                        let show = entry.get("show")?;
+                                        let title = show.get("title")?.as_str()?.to_string();
+                                        let year = show.get("year").and_then(|y| y.as_i64()).map(|y| y as i32);
+                                        let slug = show.get("ids")
+                                            .and_then(|ids| ids.get("slug"))
+                                            .and_then(|s| s.as_str())
+                                            .map(|s| s.to_string());
+                                        (title, year, slug)
+                                    }
+                                    "movie" => {
+                                        let movie = entry.get("movie")?;
+                                        let title = movie.get("title")?.as_str()?.to_string();
+                                        let year = movie.get("year").and_then(|y| y.as_i64()).map(|y| y as i32);
+                                        let slug = movie.get("ids")
+                                            .and_then(|ids| ids.get("slug"))
+                                            .and_then(|s| s.as_str())
+                                            .map(|s| s.to_string());
+                                        (title, year, slug)
+                                    }
+                                    _ => return None,
+                                };
+                                Some(WatchlistItem {
+                                    title,
+                                    year,
+                                    media_type: MediaType::Anime,
+                                    trakt_slug: slug,
+                                    poster: None,
+                                })
+                            })
+                            .collect()
+                    }
+                    _ => Vec::new(),
+                }
+            }
+            _ => Vec::new(),
+        }
+    }
+
+    /// Get combined watchlist (movies + shows + anime)
     pub async fn get_watchlist(&self) -> Vec<WatchlistItem> {
         let mut items = Vec::new();
         items.extend(self.get_movie_watchlist().await);
         items.extend(self.get_show_watchlist().await);
+        items.extend(self.get_anime_watchlist().await);
         items
     }
 
