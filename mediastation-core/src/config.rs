@@ -68,10 +68,10 @@ pub struct PathsConfig {
 impl Default for PathsConfig {
     fn default() -> Self {
         Self {
-            download_dir: "/home/amh/Downloads".to_string(),
-            movies_dir: "/home/amh/jellyfin/media/movies".to_string(),
-            shows_dir: "/home/amh/jellyfin/media/tv".to_string(),
-            anime_dir: "/home/amh/jellyfin/media/anime".to_string(),
+            download_dir: String::new(),
+            movies_dir: String::new(),
+            shows_dir: String::new(),
+            anime_dir: String::new(),
         }
     }
 }
@@ -208,7 +208,9 @@ impl AppConfig {
 
     /// Get the base directory for state files
     pub fn base_dir(&self) -> std::path::PathBuf {
-        std::path::PathBuf::from("/home/amh/jellyfin/.moviewatch_project")
+        dirs::data_dir()
+            .unwrap_or_else(|| std::path::PathBuf::from("."))
+            .join("rustyfin")
     }
 
     /// Get the processed files path
