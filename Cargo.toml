@@ -1,0 +1,12 @@
+[workspace]
+members = ["mediastation-cli", "mediastation-core"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["MediaStation Team"]
+license = "MIT"
+
+[workspace.metadata.mediastation]
+description = "A TUI application for managing a self-hosted Jellyfin media server"
