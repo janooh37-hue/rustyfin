@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>Terminal-first power for your Jellyfin empire</b><br>
-  Browse. Search. Organize. All from the comfort of your terminal.
+  Browse. Search. Download. Organize. All from the comfort of your terminal.
 </p>
 
 <p align="center">
@@ -19,53 +19,102 @@
 
 ## Why RustyFin?
 
-Because your media server deserves better than a browser tab. RustyFin brings the full power of Jellyfin to your terminal with blazing fast performance and zero bloat.
+Because your media server deserves better than a browser tab. RustyFin brings full Jellyfin media management to your terminal with blazing fast performance and zero bloat.
 
 ### Features
 
 | Feature | What it does |
 |---------|--------------|
-| **Library Browser** | Navigate your Jellyfin libraries without leaving the terminal |
-| **Smart Search** | Find movies, shows, and media across your entire library |
-| **qBittorrent Integration** | Download torrents directly from the TUI |
-| **Subtitle Manager** | Search & download subtitles for any media |
-| **Trakt.tv Sync** | Track watched status across devices |
-| **Auto-Organize** | Keep your media collection tidy automatically |
-| **Rich Media Info** | Detailed info about your files - codecs, quality, size |
+| **Library Browser** | Drill-down navigation: Movies / Shows / Anime > Seasons > Episodes |
+| **Torrent Search** | Search across 7 indexers: YTS, TPB, 1337x, EZTV, Nyaa, TorrentGalaxy, LimeTorrents |
+| **qBittorrent Integration** | Download, pause, resume, delete torrents directly from the TUI |
+| **Auto-Organize** | Move completed downloads into your Jellyfin library structure |
+| **Subtitle Manager** | Download Arabic subtitles via SubDL chain |
+| **Trakt.tv Sync** | Movie + Show + Anime watchlists, search directly from watchlist |
+| **mpv Playback** | Play any file with mpv directly from the TUI |
+| **Editable Settings** | Configure everything in-app: paths, credentials, quality, indexers |
+| **Themes** | 5 built-in themes: Catppuccin, Dracula, Gruvbox, Nord, Rose Pine |
 
 ---
 
-## Quick Start
+## Installation
+
+### Requirements
+
+- **Rust** (1.70+) - [Install Rust](https://rustup.rs/)
+- **qBittorrent** with Web UI enabled
+- **mpv** (optional, for playback)
+
+### Quick Install
 
 ```bash
-# Clone & build
+git clone https://github.com/janooh37-hue/rustyfin.git
+cd rustyfin
+./install.sh
+```
+
+This builds the release binary, installs it to `~/.cargo/bin/`, and creates a shorthand symlink.
+
+After installation:
+
+```bash
+rustyfin    # full name
+rf          # shorthand
+```
+
+### Manual Install
+
+```bash
 git clone https://github.com/janooh37-hue/rustyfin.git
 cd rustyfin
 cargo build --release
 
-# Run it
-cargo run --package mediastation-cli
+# Copy binary to your PATH
+cp target/release/rustyfin ~/.cargo/bin/
+ln -s ~/.cargo/bin/rustyfin ~/.cargo/bin/rf
 ```
 
-### First Run
+### Updating
 
-Create a `config.yaml` in `~/.config/rustyfin/`:
-
-```yaml
-jellyfin:
-  url: "http://localhost:8096"
-  api_key: "your-api-key-here"
-  user_id: "your-user-id"
-
-qbittorrent:
-  url: "http://localhost:8080"
-  username: "admin"
-  password: "adminadmin"
-
-trakt:
-  client_id: "your-trakt-client-id"
-  client_secret: "your-trakt-secret"
+```bash
+cd rustyfin
+git pull
+./install.sh
 ```
+
+---
+
+## First Run
+
+On first launch, if no config file exists, RustyFin runs an interactive setup wizard:
+
+```
+=== RustyFin First-Run Setup ===
+
+-- Media Paths --
+Movies directory [/home/user/media/movies]:
+TV Shows directory [/home/user/media/tv]:
+Anime directory [/home/user/media/anime]:
+Downloads directory [/home/user/Downloads]:
+
+-- qBittorrent Connection --
+qBittorrent host [http://localhost:8080]:
+qBittorrent username [admin]:
+qBittorrent password:
+
+-- Trakt.tv (optional, press Enter to skip) --
+Trakt username:
+Trakt client ID:
+
+-- Quality Preferences --
+Quality priority (comma-separated) [2160p,1080p]:
+Max file size in GB [10]:
+Avoid CAM releases? [Y/n]:
+```
+
+Press Enter to accept defaults shown in brackets. Config is saved to `~/.moviewatch_project/config.json`.
+
+All settings can be changed later from the **Settings** panel inside the TUI.
 
 ---
 
@@ -73,39 +122,119 @@ trakt:
 
 | Key | Action |
 |-----|--------|
-| `↑↓` | Navigate |
-| `←→` | Move between panels |
-| `Enter` | Select / Open |
-| `Esc` | Go back / Close |
-| `/` | Search |
-| `d` | Download (qBittorrent) |
-| `s` | Search subtitles |
-| `w` | Mark as watched (Trakt) |
-| `r` | Refresh |
+| `↑` / `k` | Navigate up |
+| `↓` / `j` | Navigate down |
+| `→` / `Enter` | Enter panel / Select |
+| `←` / `Esc` | Back to sidebar |
+| `g` / `G` | Jump to top / bottom |
+| `/` | Search torrents |
+| `d` | Delete torrent |
+| `o` | Organize file into library |
+| `S` | Download subtitle |
+| `p` | Play with mpv |
+| `a` | Search watchlist item |
+| `P` / `u` | Pause / Resume torrent |
+| `r` / `R` | Refresh panel / Refresh all |
+| `?` | Help overlay |
 | `q` | Quit |
+
+### Settings Panel
+
+- Navigate to an editable field and press **Enter** to edit inline
+- Type your value, use **Left/Right** to move cursor
+- **Enter** saves, **Esc** cancels
+- Search indexers toggle **ON/OFF** with Enter
+- Theme cycles through options with Enter
+
+---
+
+## Search Indexers
+
+All indexers are toggleable in Settings:
+
+| Indexer | Category | Type |
+|---------|----------|------|
+| YTS | Movies | API |
+| The Pirate Bay | General | API |
+| 1337x | General | Scrape |
+| EZTV | TV Shows | API |
+| Nyaa | Anime | Scrape |
+| TorrentGalaxy | General | Scrape |
+| LimeTorrents | General | Scrape |
+
+---
+
+## Configuration
+
+Config file: `~/.moviewatch_project/config.json`
+
+```json
+{
+  "paths": {
+    "download_dir": "/home/user/Downloads",
+    "movies_dir": "/home/user/media/movies",
+    "shows_dir": "/home/user/media/tv",
+    "anime_dir": "/home/user/media/anime"
+  },
+  "qbittorrent": {
+    "host": "http://localhost:8080",
+    "username": "admin",
+    "password": "your-password"
+  },
+  "trakt": {
+    "username": "your-trakt-username",
+    "client_id": "your-trakt-client-id"
+  },
+  "settings": {
+    "quality_priority": ["2160p", "1080p"],
+    "max_size_gb": 10,
+    "min_seeds": 5,
+    "avoid_cam": true,
+    "search_indexers": ["yts", "tpb", "1337x"]
+  }
+}
+```
+
+You can edit this file directly or use the Settings panel in the TUI.
+
+---
+
+## CLI Options
+
+```
+rf [OPTIONS]
+
+Options:
+  -c, --config <PATH>   Config file path [default: ~/.moviewatch_project/config.json]
+  -t, --theme <THEME>   Theme: catppuccin, dracula, gruvbox, nord, rosepine [default: gruvbox]
+  -v, --verbose         Enable verbose logging (writes to ~/.moviewatch_project/rustyfin.log)
+  -h, --help            Show help
+  -V, --version         Show version
+```
 
 ---
 
 ## Architecture
 
 ```
-mediastation-cli     → The TUI entrypoint
-mediastation-core    → The brain:
-  ├── services/      → API integrations (Jellyfin, qBittorrent, Trakt)
-  ├── ui/            → TUI components & rendering
-  ├── models/        → Data structures
-  └── config/        → Configuration handling
+rustyfin/
+  mediastation-cli/     -> CLI entrypoint (binary: rustyfin)
+  mediastation-core/    -> Core library:
+    ├── services/       -> qBittorrent, Trakt, Search, Organize, Subtitle, Library
+    ├── ui/             -> TUI app loop, rendering, state management
+    ├── models/         -> Data structures
+    ├── config.rs       -> Configuration loading/saving
+    └── setup.rs        -> First-run setup wizard
 ```
-
----
 
 ## Tech Stack
 
 - **Rust** - Memory-safe, blazing fast
 - **Ratatui** - Terminal UI framework
+- **Crossterm** - Terminal backend
 - **Reqwest** - HTTP client
 - **Tokio** - Async runtime
-- **Serde** - Serialization
+- **Scraper** - HTML parsing for web scrapers
 
 ---
 
@@ -116,5 +245,5 @@ Pull requests welcome. Found a bug? Open an issue. Want a feature? Tell us.
 ---
 
 <p align="center">
-  <sub>Built with ☕ and pure determination by MediaStation Team</sub>
+  <sub>Built with Rust and determination</sub>
 </p>
