@@ -219,6 +219,10 @@ impl AppConfig {
             "tv_settings": *self.tv_settings,
         });
         let content = serde_json::to_string_pretty(&raw)?;
+        // Create config directory if it doesn't exist
+        if let Some(parent) = Path::new(&self.config_path).parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
         std::fs::write(&self.config_path, content)?;
         Ok(())
     }
