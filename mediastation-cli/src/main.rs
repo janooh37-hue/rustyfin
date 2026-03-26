@@ -3,18 +3,31 @@
 use clap::Parser;
 use log::info;
 
+/// Get the default config path: ~/.config/rustyfin/config.json
+fn default_config_path() -> String {
+    dirs::config_dir()
+        .unwrap_or_else(|| dirs::home_dir().unwrap_or_default().join(".config"))
+        .join("rustyfin")
+        .join("config.json")
+        .to_string_lossy()
+        .to_string()
+}
+
+/// Get the default log directory: ~/.config/rustyfin/
+fn default_log_dir() -> std::path::PathBuf {
+    dirs::config_dir()
+        .unwrap_or_else(|| dirs::home_dir().unwrap_or_default().join(".config"))
+        .join("rustyfin")
+}
+
 /// CLI arguments for RustyFin
 #[derive(Parser, Debug)]
 #[command(name = "rustyfin")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "RustyFin - A TUI application for managing your Jellyfin media server", long_about = None)]
 pub struct Args {
-    /// Config file path (default: ~/.moviewatch_project/config.json)
-    #[arg(
-        short,
-        long,
-        default_value = "/home/amh/jellyfin/.moviewatch_project/config.json"
-    )]
+    /// Config file path
+    #[arg(short, long, default_value_t = default_config_path())]
     pub config: String,
 
     /// Enable verbose logging
@@ -31,8 +44,8 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     // Initialize logger - write to file to keep terminal clean for TUI
-    let log_dir = std::path::Path::new("/home/amh/jellyfin/.moviewatch_project");
-    let _ = std::fs::create_dir_all(log_dir);
+    let log_dir = default_log_dir();
+    let _ = std::fs::create_dir_all(&log_dir);
     let log_file = std::fs::OpenOptions::new()
         .create(true)
         .append(true)

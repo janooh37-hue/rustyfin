@@ -11,6 +11,7 @@ clap = { version = "4.6", features = ["derive"] }
 log = "0.4"
 env_logger = "0.11"
 anyhow = "1.0"
+dirs = "5"
 
 [[bin]]
 name = "rustyfin"

@@ -86,35 +86,15 @@ git pull
 
 ## First Run
 
-On first launch, if no config file exists, RustyFin runs an interactive setup wizard:
+On first launch, RustyFin opens directly with sensible defaults. A config file is automatically created at `~/.config/rustyfin/config.json`.
 
-```
-=== RustyFin First-Run Setup ===
+To configure the app, go to the **Settings** panel and edit:
+- Media paths (movies, shows, anime, downloads)
+- qBittorrent connection (host, username, password)
+- Trakt.tv credentials (username, client ID)
+- Quality preferences, search indexers, and more
 
--- Media Paths --
-Movies directory [/home/user/media/movies]:
-TV Shows directory [/home/user/media/tv]:
-Anime directory [/home/user/media/anime]:
-Downloads directory [/home/user/Downloads]:
-
--- qBittorrent Connection --
-qBittorrent host [http://localhost:8080]:
-qBittorrent username [admin]:
-qBittorrent password:
-
--- Trakt.tv (optional, press Enter to skip) --
-Trakt username:
-Trakt client ID:
-
--- Quality Preferences --
-Quality priority (comma-separated) [2160p,1080p]:
-Max file size in GB [10]:
-Avoid CAM releases? [Y/n]:
-```
-
-Press Enter to accept defaults shown in brackets. Config is saved to `~/.moviewatch_project/config.json`.
-
-All settings can be changed later from the **Settings** panel inside the TUI.
+All changes save instantly to the config file. Passwords are masked in the UI.
 
 ---
 
@@ -166,7 +146,7 @@ All indexers are toggleable in Settings:
 
 ## Configuration
 
-Config file: `~/.moviewatch_project/config.json`
+Config file: `~/.config/rustyfin/config.json`
 
 ```json
 {
@@ -205,9 +185,9 @@ You can edit this file directly or use the Settings panel in the TUI.
 rf [OPTIONS]
 
 Options:
-  -c, --config <PATH>   Config file path [default: ~/.moviewatch_project/config.json]
+  -c, --config <PATH>   Config file path [default: ~/.config/rustyfin/config.json]
   -t, --theme <THEME>   Theme: catppuccin, dracula, gruvbox, nord, rosepine [default: gruvbox]
-  -v, --verbose         Enable verbose logging (writes to ~/.moviewatch_project/rustyfin.log)
+  -v, --verbose         Enable verbose logging (writes to ~/.config/rustyfin/rustyfin.log)
   -h, --help            Show help
   -V, --version         Show version
 ```
@@ -223,8 +203,7 @@ rustyfin/
     ├── services/       -> qBittorrent, Trakt, Search, Organize, Subtitle, Library
     ├── ui/             -> TUI app loop, rendering, state management
     ├── models/         -> Data structures
-    ├── config.rs       -> Configuration loading/saving
-    └── setup.rs        -> First-run setup wizard
+    └── config.rs       -> Configuration loading/saving
 ```
 
 ## Tech Stack
