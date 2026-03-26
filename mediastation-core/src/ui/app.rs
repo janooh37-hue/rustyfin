@@ -1020,14 +1020,18 @@ fn toggle_search_indexer(state: &mut AppState, config: &Arc<AppConfig>, indexer:
 
     // Save to disk by reading, modifying, writing config
     let config_path = config.config_path();
-    if let Ok(content) = std::fs::read_to_string(config_path) {
-        if let Ok(mut json) = serde_json::from_str::<serde_json::Value>(&content) {
-            if let Some(settings) = json.get_mut("settings") {
-                settings["search_indexers"] = serde_json::json!(state.search_indexers);
-            }
-            let _ = std::fs::write(config_path, serde_json::to_string_pretty(&json).unwrap_or_default());
-        }
+    if let Some(parent) = std::path::Path::new(config_path).parent() {
+        let _ = std::fs::create_dir_all(parent);
     }
+    let mut json = match std::fs::read_to_string(config_path) {
+        Ok(content) => serde_json::from_str::<serde_json::Value>(&content)
+            .unwrap_or_else(|_| config.to_json()),
+        Err(_) => config.to_json(),
+    };
+    if let Some(settings) = json.get_mut("settings") {
+        settings["search_indexers"] = serde_json::json!(state.search_indexers);
+    }
+    let _ = std::fs::write(config_path, serde_json::to_string_pretty(&json).unwrap_or_default());
 }
 
 /// Handle keys in EditSetting mode - inline text editing of a setting value
@@ -1110,13 +1114,22 @@ fn handle_edit_setting_mode(
 /// Save a setting value to the config JSON file (read-modify-write pattern)
 fn save_setting_to_config(config: &Arc<AppConfig>, key: &str, value: &str) {
     let config_path = config.config_path();
-    let content = match std::fs::read_to_string(config_path) {
-        Ok(c) => c,
-        Err(_) => return,
-    };
-    let mut json: serde_json::Value = match serde_json::from_str(&content) {
-        Ok(j) => j,
-        Err(_) => return,
+
+    // Create config dir if needed
+    if let Some(parent) = std::path::Path::new(config_path).parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+
+    // Read existing file, or create default JSON structure if file doesn't exist
+    let mut json: serde_json::Value = match std::fs::read_to_string(config_path) {
+        Ok(content) => serde_json::from_str(&content).unwrap_or_else(|_| {
+            // File exists but corrupt — rebuild from current config
+            config.to_json()
+        }),
+        Err(_) => {
+            // File doesn't exist — create from current config
+            config.to_json()
+        }
     };
 
     match key {

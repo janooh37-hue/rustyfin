@@ -462,17 +462,23 @@ fn render_settings(f: &mut Frame, area: Rect, state: &mut AppState, theme: &Them
             ])
         } else if is_editing && selected_idx == Some(i) && e.key == state.editing_setting_key {
             // Show inline editing with cursor
+            // Mask password fields
+            let is_password = e.key == "qBit Pass";
             let cursor_pos = state.editing_setting_cursor;
             let val = &state.editing_setting_value;
-            let chars: Vec<char> = val.chars().collect();
-            let before: String = chars[..cursor_pos.min(chars.len())].iter().collect();
-            let cursor_char = if cursor_pos < chars.len() {
-                chars[cursor_pos].to_string()
+            let display_chars: Vec<char> = if is_password {
+                vec!['*'; val.chars().count()]
+            } else {
+                val.chars().collect()
+            };
+            let before: String = display_chars[..cursor_pos.min(display_chars.len())].iter().collect();
+            let cursor_char = if cursor_pos < display_chars.len() {
+                display_chars[cursor_pos].to_string()
             } else {
                 " ".to_string()
             };
-            let after: String = if cursor_pos < chars.len() {
-                chars[cursor_pos + 1..].iter().collect()
+            let after: String = if cursor_pos < display_chars.len() {
+                display_chars[cursor_pos + 1..].iter().collect()
             } else {
                 String::new()
             };

@@ -6,6 +6,7 @@ pub mod services;
 pub mod ui;
 
 use std::panic;
+use std::path::Path;
 
 use crate::config::AppConfig;
 use crate::ui::app::run_app;
@@ -19,12 +20,17 @@ pub fn run_tui(config_path: &str, theme_name: &str) -> anyhow::Result<()> {
         default_panic(panic_info);
     }));
 
-    // Load configuration - fall back to defaults if file is missing/corrupt
+    // If config file doesn't exist, create it with defaults
+    if !Path::new(config_path).exists() {
+        let config = AppConfig::default_with_path(config_path);
+        let _ = config.save();
+    }
+
+    // Load configuration - fall back to defaults if corrupt
     let config = match AppConfig::load(config_path) {
         Ok(c) => c,
         Err(_) => {
             let config = AppConfig::default_with_path(config_path);
-            // Save defaults so Settings panel edits persist
             let _ = config.save();
             config
         }

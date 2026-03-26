@@ -208,6 +208,18 @@ impl AppConfig {
         &self.config_path
     }
 
+    /// Serialize current config to a JSON Value
+    pub fn to_json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "trakt": *self.trakt,
+            "qbittorrent": *self.qbittorrent,
+            "telegram": *self.telegram,
+            "paths": *self.paths,
+            "settings": *self.settings,
+            "tv_settings": *self.tv_settings,
+        })
+    }
+
     /// Save configuration to disk
     pub fn save(&self) -> anyhow::Result<()> {
         let raw = serde_json::json!({
