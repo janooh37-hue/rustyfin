@@ -29,6 +29,8 @@ pub fn run_setup(config_path: &str) -> anyhow::Result<()> {
 
     println!();
     println!("=== RustyFin First-Run Setup ===");
+    println!("Press Enter to accept defaults shown in [brackets].");
+    println!("You can change all settings later from the Settings panel.");
     println!();
 
     // -- Media Paths --
@@ -46,6 +48,19 @@ pub fn run_setup(config_path: &str) -> anyhow::Result<()> {
     let default_downloads = format!("{}/Downloads", home);
     let download_dir = prompt(&mut reader, "Downloads directory", &default_downloads)?;
 
+    // Create all media directories
+    for (label, dir) in [
+        ("Movies", &movies_dir),
+        ("Shows", &shows_dir),
+        ("Anime", &anime_dir),
+        ("Downloads", &download_dir),
+    ] {
+        match std::fs::create_dir_all(dir) {
+            Ok(_) => println!("  Created: {}", dir),
+            Err(e) => println!("  Warning: Could not create {} dir ({}): {}", label, dir, e),
+        }
+    }
+
     println!();
 
     // -- qBittorrent Connection --
@@ -53,13 +68,7 @@ pub fn run_setup(config_path: &str) -> anyhow::Result<()> {
 
     let qbt_host = prompt(&mut reader, "qBittorrent host", "http://localhost:8080")?;
     let qbt_username = prompt(&mut reader, "qBittorrent username", "admin")?;
-
-    // Password prompt - note: input is visible (no raw-mode echo suppression)
-    print!("qBittorrent password: ");
-    io::stdout().flush()?;
-    let mut qbt_password = String::new();
-    reader.read_line(&mut qbt_password)?;
-    let qbt_password = qbt_password.trim().to_string();
+    let qbt_password = prompt(&mut reader, "qBittorrent password", "")?;
 
     println!();
 
@@ -88,7 +97,7 @@ pub fn run_setup(config_path: &str) -> anyhow::Result<()> {
     let max_size_str = prompt(&mut reader, "Max file size in GB", "10")?;
     let max_size_gb: u32 = max_size_str.parse().unwrap_or(10);
 
-    let avoid_cam_str = prompt(&mut reader, "Avoid CAM releases?", "Y/n")?;
+    let avoid_cam_str = prompt(&mut reader, "Avoid CAM releases? (y/n)", "y")?;
     let avoid_cam = !avoid_cam_str.eq_ignore_ascii_case("n");
 
     println!();
@@ -142,6 +151,7 @@ pub fn run_setup(config_path: &str) -> anyhow::Result<()> {
     // Write the config file
     std::fs::write(config_path, content)?;
 
+    println!("Config saved to: {}", config_path);
     println!("Setup complete! Starting RustyFin...");
     println!();
 
@@ -151,7 +161,11 @@ pub fn run_setup(config_path: &str) -> anyhow::Result<()> {
 /// Prompt the user for a value, showing a default in brackets.
 /// If the user presses Enter without typing anything, the default is returned.
 fn prompt(reader: &mut impl BufRead, label: &str, default: &str) -> io::Result<String> {
-    print!("{} [{}]: ", label, default);
+    if default.is_empty() {
+        print!("{}: ", label);
+    } else {
+        print!("{} [{}]: ", label, default);
+    }
     io::stdout().flush()?;
 
     let mut input = String::new();

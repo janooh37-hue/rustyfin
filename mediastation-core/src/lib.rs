@@ -22,10 +22,27 @@ pub fn run_tui(config_path: &str, theme_name: &str) -> anyhow::Result<()> {
     }));
 
     // Run first-run setup if no config file exists
-    run_setup(config_path)?;
+    if let Err(e) = run_setup(config_path) {
+        eprintln!("Setup wizard error: {}. Creating default config...", e);
+        // Create a minimal default config so the app can still launch
+        let config = AppConfig::default_with_path(config_path);
+        if let Err(e2) = config.save() {
+            eprintln!("Warning: Could not save default config: {}", e2);
+        }
+    }
 
-    // Load configuration
-    let config = AppConfig::load(config_path)?;
+    // Load configuration - fall back to defaults if file is corrupt/missing
+    let config = match AppConfig::load(config_path) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Config error: {}. Starting with defaults...", e);
+            eprintln!("Use Settings panel to configure the app.");
+            let config = AppConfig::default_with_path(config_path);
+            // Try to save the default config for next time
+            let _ = config.save();
+            config
+        }
+    };
 
     // Run the TUI
     run_app(config, theme_name)

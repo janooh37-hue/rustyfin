@@ -67,11 +67,14 @@ pub struct PathsConfig {
 
 impl Default for PathsConfig {
     fn default() -> Self {
+        let home = dirs::home_dir()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| "/home/user".to_string());
         Self {
-            download_dir: String::new(),
-            movies_dir: String::new(),
-            shows_dir: String::new(),
-            anime_dir: String::new(),
+            download_dir: format!("{}/Downloads", home),
+            movies_dir: format!("{}/media/movies", home),
+            shows_dir: format!("{}/media/tv", home),
+            anime_dir: format!("{}/media/anime", home),
         }
     }
 }
@@ -163,6 +166,20 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
+    /// Create a default config that points to the given path
+    pub fn default_with_path(path: &str) -> Self {
+        let raw = RawConfig::default();
+        Self {
+            trakt: Arc::new(raw.trakt),
+            qbittorrent: Arc::new(raw.qbittorrent),
+            telegram: Arc::new(raw.telegram),
+            paths: Arc::new(raw.paths),
+            settings: Arc::new(raw.settings),
+            tv_settings: Arc::new(raw.tv_settings),
+            config_path: path.to_string(),
+        }
+    }
+
     /// Load configuration from a JSON file
     pub fn load(path: &str) -> anyhow::Result<Self> {
         let config_path = Path::new(path);
