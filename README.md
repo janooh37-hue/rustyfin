@@ -1,6 +1,3 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/janooh37-hue/rustyfin/main/.github/logo.png" alt="RustyFin" width="200"/>
-</p>
 
 <h1 align="center">RustyFin</h1>
 
