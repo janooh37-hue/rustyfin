@@ -1,9 +1,5 @@
 
 
-<p align="center">
-  <img src=".github/logo.png" alt="RustyFin" width="200"/>
-</p>
-
 <h1 align="center">RustyFin</h1>
 
 <p align="center">
