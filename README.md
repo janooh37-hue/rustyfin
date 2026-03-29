@@ -17,6 +17,10 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat" alt="License"/>
 </p>
 
+<p align="center">
+  <img src="assets/Rustyfin(preview).gif" alt="RustyFin Preview" width="800"/>
+</p>
+
 ---
 
 ## Features
