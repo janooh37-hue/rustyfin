@@ -1,4 +1,4 @@
-# RustyFin
+
 
 <p align="center">
   <img src=".github/logo.png" alt="RustyFin" width="200"/>
