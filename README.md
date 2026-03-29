@@ -12,11 +12,10 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat" alt="License"/>
 </p>
 
----
+<p align="center">
+  <img src="assets/Rustyfin(preview).gif" alt="RustyFin Preview" width="800"/>
+</p>
 
-## Why RustyFin?
-
-Because your media server deserves better than a browser tab. RustyFin brings full Jellyfin media management to your terminal with blazing fast performance and zero bloat.
 
 ### Features
 
