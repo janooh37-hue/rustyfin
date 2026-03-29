@@ -11,6 +11,20 @@ pub struct TraktConfig {
     pub client_id: String,
 }
 
+/// Configuration for OMDb (movie metadata)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OmdbConfig {
+    pub api_key: String,
+}
+
+impl Default for OmdbConfig {
+    fn default() -> Self {
+        Self {
+            api_key: String::new(),
+        }
+    }
+}
+
 impl Default for TraktConfig {
     fn default() -> Self {
         Self {
@@ -68,13 +82,39 @@ pub struct PathsConfig {
 impl Default for PathsConfig {
     fn default() -> Self {
         let home = dirs::home_dir()
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|| "/home/user".to_string());
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| {
+                #[cfg(windows)]
+                {
+                    std::path::PathBuf::from(r"C:\Users\default")
+                }
+                #[cfg(not(windows))]
+                {
+                    std::path::PathBuf::from("/home/user")
+                }
+            });
+
+        #[cfg(windows)]
+        let (download_dir, movies_dir, shows_dir, anime_dir) = (
+            home.join("Downloads"),
+            home.join("media").join("movies"),
+            home.join("media").join("tv"),
+            home.join("media").join("anime"),
+        );
+
+        #[cfg(not(windows))]
+        let (download_dir, movies_dir, shows_dir, anime_dir) = (
+            home.join("Downloads"),
+            home.join("media").join("movies"),
+            home.join("media").join("tv"),
+            home.join("media").join("anime"),
+        );
+
         Self {
-            download_dir: format!("{}/Downloads", home),
-            movies_dir: format!("{}/media/movies", home),
-            shows_dir: format!("{}/media/tv", home),
-            anime_dir: format!("{}/media/anime", home),
+            download_dir: download_dir.to_string_lossy().to_string(),
+            movies_dir: movies_dir.to_string_lossy().to_string(),
+            shows_dir: shows_dir.to_string_lossy().to_string(),
+            anime_dir: anime_dir.to_string_lossy().to_string(),
         }
     }
 }
@@ -146,6 +186,8 @@ struct RawConfig {
     #[serde(default)]
     telegram: TelegramConfig,
     #[serde(default)]
+    omdb: OmdbConfig,
+    #[serde(default)]
     paths: PathsConfig,
     #[serde(default)]
     settings: Settings,
@@ -159,6 +201,7 @@ pub struct AppConfig {
     pub trakt: Arc<TraktConfig>,
     pub qbittorrent: Arc<QBittorrentConfig>,
     pub telegram: Arc<TelegramConfig>,
+    pub omdb: Arc<OmdbConfig>,
     pub paths: Arc<PathsConfig>,
     pub settings: Arc<Settings>,
     pub tv_settings: Arc<TVSettings>,
@@ -173,6 +216,7 @@ impl AppConfig {
             trakt: Arc::new(raw.trakt),
             qbittorrent: Arc::new(raw.qbittorrent),
             telegram: Arc::new(raw.telegram),
+            omdb: Arc::new(raw.omdb),
             paths: Arc::new(raw.paths),
             settings: Arc::new(raw.settings),
             tv_settings: Arc::new(raw.tv_settings),
@@ -196,6 +240,7 @@ impl AppConfig {
             trakt: Arc::new(raw.trakt),
             qbittorrent: Arc::new(raw.qbittorrent),
             telegram: Arc::new(raw.telegram),
+            omdb: Arc::new(raw.omdb),
             paths: Arc::new(raw.paths),
             settings: Arc::new(raw.settings),
             tv_settings: Arc::new(raw.tv_settings),
@@ -214,6 +259,7 @@ impl AppConfig {
             "trakt": *self.trakt,
             "qbittorrent": *self.qbittorrent,
             "telegram": *self.telegram,
+            "omdb": *self.omdb,
             "paths": *self.paths,
             "settings": *self.settings,
             "tv_settings": *self.tv_settings,
@@ -226,6 +272,7 @@ impl AppConfig {
             "trakt": *self.trakt,
             "qbittorrent": *self.qbittorrent,
             "telegram": *self.telegram,
+            "omdb": *self.omdb,
             "paths": *self.paths,
             "settings": *self.settings,
             "tv_settings": *self.tv_settings,
@@ -266,6 +313,7 @@ impl Default for RawConfig {
             trakt: TraktConfig::default(),
             qbittorrent: QBittorrentConfig::default(),
             telegram: TelegramConfig::default(),
+            omdb: OmdbConfig::default(),
             paths: PathsConfig::default(),
             settings: Settings::default(),
             tv_settings: TVSettings::default(),

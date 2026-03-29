@@ -35,7 +35,13 @@ impl MediaInfoService {
             return serde_json::from_value(cached.clone()).ok();
         }
 
-        let mut url = format!("https://www.omdbapi.com/?t={}&apikey=demo", urlencoding::encode(title));
+        let api_key = &self.config.omdb.api_key;
+        if api_key.is_empty() {
+            log::debug!("OMDb API key not configured");
+            return None;
+        }
+
+        let mut url = format!("https://www.omdbapi.com/?t={}&apikey={}", urlencoding::encode(title), api_key);
         if let Some(y) = year {
             url.push_str(&format!("&y={}", y));
         }

@@ -1,3 +1,4 @@
+use reqwest::header::{HeaderMap, HeaderValue};
 use serde::Deserialize;
 
 use crate::config::QBittorrentConfig;
@@ -8,6 +9,7 @@ pub struct QBittorrentService {
     config: QBittorrentConfig,
     base_url: String,
     logged_in: bool,
+    sid: Option<String>,
 }
 
 impl QBittorrentService {
@@ -23,6 +25,7 @@ impl QBittorrentService {
             config: config.clone(),
             base_url,
             logged_in: false,
+            sid: None,
         }
     }
 
@@ -36,12 +39,24 @@ impl QBittorrentService {
 
         match self.client.post(&url).form(&params).send().await {
             Ok(response) => {
-                if response.status().is_success() {
+                let status = response.status();
+                if status.is_success() || status.as_u16() == 200 {
+                    if let Some(set_cookie) = response.headers().get("set-cookie") {
+                        if let Ok(cookie_str) = set_cookie.to_str() {
+                            for part in cookie_str.split(';') {
+                                let part = part.trim();
+                                if part.starts_with("SID=") {
+                                    self.sid = Some(part.to_string());
+                                    break;
+                                }
+                            }
+                        }
+                    }
                     self.logged_in = true;
                     log::info!("Successfully logged into qBittorrent");
                     true
                 } else {
-                    log::warn!("Failed to login to qBittorrent: {}", response.status());
+                    log::warn!("Failed to login to qBittorrent: {}", status);
                     false
                 }
             }
@@ -60,6 +75,16 @@ impl QBittorrentService {
         }
     }
 
+    fn auth_headers(&self) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        if let Some(ref sid) = self.sid {
+            if let Ok(value) = HeaderValue::from_str(sid) {
+                headers.insert("Cookie", value);
+            }
+        }
+        headers
+    }
+
     pub async fn get_torrents(&mut self, category: Option<&str>) -> Vec<Torrent> {
         if !self.ensure_logged_in().await {
             return Vec::new();
@@ -70,7 +95,7 @@ impl QBittorrentService {
             url.push_str(&format!("?category={}", cat));
         }
 
-        match self.client.get(&url).send().await {
+        match self.client.get(&url).headers(self.auth_headers()).send().await {
             Ok(response) => {
                 match response.json::<Vec<ApiTorrent>>().await {
                     Ok(torrents) => torrents.into_iter().map(|t| t.into()).collect(),
@@ -136,13 +161,14 @@ impl QBittorrentService {
             ("category", category),
         ];
 
-        match self.client.post(&url).form(&params).send().await {
+        match self.client.post(&url).headers(self.auth_headers()).form(&params).send().await {
             Ok(response) => {
                 if response.status().is_success() {
                     log::info!("Successfully added torrent: {}", magnet);
                     true
                 } else {
-                    log::warn!("Failed to add torrent: {}", response.status());
+                    let status = response.status();
+                    log::warn!("Failed to add torrent: {}", status);
                     false
                 }
             }
@@ -165,7 +191,7 @@ impl QBittorrentService {
             ("deleteFiles", if delete_files { "true" } else { "false" }),
         ];
 
-        match self.client.post(&url).form(&params).send().await {
+        match self.client.post(&url).headers(self.auth_headers()).form(&params).send().await {
             Ok(response) => {
                 if response.status().is_success() {
                     log::info!("Successfully deleted torrent: {}", hash);
@@ -190,7 +216,7 @@ impl QBittorrentService {
         let url = format!("{}torrents/pause", self.base_url);
         let params = [("hashes", hash)];
 
-        match self.client.post(&url).form(&params).send().await {
+        match self.client.post(&url).headers(self.auth_headers()).form(&params).send().await {
             Ok(response) => {
                 if response.status().is_success() {
                     log::info!("Successfully paused torrent: {}", hash);
@@ -215,7 +241,7 @@ impl QBittorrentService {
         let url = format!("{}torrents/resume", self.base_url);
         let params = [("hashes", hash)];
 
-        match self.client.post(&url).form(&params).send().await {
+        match self.client.post(&url).headers(self.auth_headers()).form(&params).send().await {
             Ok(response) => {
                 if response.status().is_success() {
                     log::info!("Successfully resumed torrent: {}", hash);
@@ -239,7 +265,7 @@ impl QBittorrentService {
 
         let url = format!("{}transfer/info", self.base_url);
 
-        match self.client.get(&url).send().await {
+        match self.client.get(&url).headers(self.auth_headers()).send().await {
             Ok(response) => {
                 match response.json::<ApiTransferInfo>().await {
                     Ok(info) => TransferInfo {

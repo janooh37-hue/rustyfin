@@ -1,51 +1,76 @@
+# RustyFin
+
 <p align="center">
-  <img src="https://raw.githubusercontent.com/janooh37-hue/rustyfin/main/.github/logo.png" alt="RustyFin" width="200"/>
+  <img src=".github/logo.png" alt="RustyFin" width="200"/>
 </p>
 
 <h1 align="center">RustyFin</h1>
 
 <p align="center">
-  <b>Terminal-first power for your Jellyfin empire</b><br>
+  <b>Terminal-first power for your media empire</b><br>
   Browse. Search. Download. Organize. All from the comfort of your terminal.
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Rust-DEA584?style=flat&logo=rust&logoColor=white" alt="Rust"/>
-  <img src="https://img.shields.io/badge/Jellyfin-00A4EF?style=flat&logo=jellyfin&logoColor=white" alt="Jellyfin"/>
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue?style=flat" alt="Platform"/>
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat" alt="License"/>
 </p>
 
 ---
 
-## Why RustyFin?
+## Features
 
-Because your media server deserves better than a browser tab. RustyFin brings full Jellyfin media management to your terminal with blazing fast performance and zero bloat.
-
-### Features
-
-| Feature | What it does |
-|---------|--------------|
+| Feature | Description |
+|---------|-------------|
 | **Library Browser** | Drill-down navigation: Movies / Shows / Anime > Seasons > Episodes |
 | **Torrent Search** | Search across 7 indexers: YTS, TPB, 1337x, EZTV, Nyaa, TorrentGalaxy, LimeTorrents |
 | **qBittorrent Integration** | Download, pause, resume, delete torrents directly from the TUI |
-| **Auto-Organize** | Move completed downloads into your Jellyfin library structure |
-| **Subtitle Manager** | Download Arabic subtitles via SubDL chain |
+| **Auto-Organize** | Move completed downloads into your media library structure |
+| **Subtitle Manager** | Download subtitles via SubDL chain |
 | **Trakt.tv Sync** | Movie + Show + Anime watchlists, search directly from watchlist |
 | **mpv Playback** | Play any file with mpv directly from the TUI |
+| **OMDb Integration** | Fetch movie metadata and posters |
 | **Editable Settings** | Configure everything in-app: paths, credentials, quality, indexers |
 | **Themes** | 5 built-in themes: Catppuccin, Dracula, Gruvbox, Nord, Rose Pine |
 
 ---
 
-## Installation
-
-### Requirements
+## Requirements
 
 - **Rust** (1.70+) - [Install Rust](https://rustup.rs/)
 - **qBittorrent** with Web UI enabled
 - **mpv** (optional, for playback)
+- **OMDb API Key** (optional, for movie metadata) - [Get free key](https://www.omdbapi.com/apikey.aspx)
 
-### Quick Install
+---
+
+## Installation
+
+### Windows
+
+1. Install Rust from [rustup.rs](https://rustup.rs/)
+
+2. Install mpv (recommended):
+   - Download from [mpv.io](https://mpv.io/installation/) or via winget:
+   ```
+   winget install mpv
+   ```
+   - Or install to `C:\Program Files\mpv\mpv.exe`
+
+3. Clone and build:
+   ```powershell
+   git clone https://github.com/janooh37-hue/rustyfin.git
+   cd rustyfin
+   cargo build --release
+   ```
+
+4. Run:
+   ```
+   .\target\release\rustyfin.exe
+   ```
+
+### Linux / macOS
 
 ```bash
 git clone https://github.com/janooh37-hue/rustyfin.git
@@ -53,52 +78,102 @@ cd rustyfin
 ./install.sh
 ```
 
-This builds the release binary, installs it to `~/.cargo/bin/`, and creates a shorthand symlink.
-
-After installation:
+Or manual:
 
 ```bash
-rustyfin    # full name
-rf          # shorthand
-```
-
-### Manual Install
-
-```bash
-git clone https://github.com/janooh37-hue/rustyfin.git
-cd rustyfin
 cargo build --release
-
-# Copy binary to your PATH
 cp target/release/rustyfin ~/.cargo/bin/
-ln -s ~/.cargo/bin/rustyfin ~/.cargo/bin/rf
-```
-
-### Updating
-
-```bash
-cd rustyfin
-git pull
-./install.sh
 ```
 
 ---
 
-## First Run
+## Configuration
 
-On first launch, RustyFin opens directly with sensible defaults. A config file is automatically created at `~/.config/rustyfin/config.json`.
+On first launch, RustyFin creates a config file at:
+- **Windows**: `%APPDATA%\rustyfin\config.json`
+- **Linux/macOS**: `~/.config/rustyfin/config.json`
 
-To configure the app, go to the **Settings** panel and edit:
-- Media paths (movies, shows, anime, downloads)
-- qBittorrent connection (host, username, password)
-- Trakt.tv credentials (username, client ID)
-- Quality preferences, search indexers, and more
+### Config File Structure
 
-All changes save instantly to the config file. Passwords are masked in the UI.
+```json
+{
+  "qbittorrent": {
+    "host": "http://localhost:8080",
+    "username": "your-username",
+    "password": "your-password"
+  },
+  "trakt": {
+    "username": "your-trakt-username",
+    "client_id": "your-trakt-client-id"
+  },
+  "omdb": {
+    "api_key": "your-omdb-api-key"
+  },
+  "telegram": {
+    "bot_token": "",
+    "chat_id": "",
+    "enabled": false
+  },
+  "paths": {
+    "download_dir": "C:\\Users\\YourUser\\Downloads",
+    "movies_dir": "C:\\Users\\YourUser\\Videos\\Movies",
+    "shows_dir": "C:\\Users\\YourUser\\Videos\\TV",
+    "anime_dir": "C:\\Users\\YourUser\\Videos\\Anime"
+  },
+  "settings": {
+    "check_interval_minutes": 15,
+    "min_seeds": 5,
+    "preferred_seeds": 20,
+    "quality_priority": ["2160p", "1080p"],
+    "max_size_gb": 10,
+    "avoid_cam": true,
+    "search_indexers": ["yts", "tpb", "1337x"]
+  },
+  "tv_settings": {
+    "max_episode_size_gb": 3,
+    "max_season_size_gb": 50,
+    "prefer_season_packs": true,
+    "quality_priority": ["2160p", "1080p"]
+  }
+}
+```
+
+### qBittorrent Setup
+
+1. Enable Web UI in qBittorrent:
+   - Tools > Options > Web UI
+   - Enable "Web User Interface (Remote access)"
+   - Set port (default: 8080)
+
+2. Create a user account if needed:
+   - Tools > Options > Web UI > "Use authentication"
+
+### mpv on Windows
+
+RustyFin looks for mpv in these locations on Windows:
+1. PATH (recommended)
+2. `C:\Program Files\mpv\mpv.exe`
+3. `C:\Program Files (x86)\mpv\mpv.exe`
+4. `C:\mpv\mpv.exe`
 
 ---
 
-## Controls
+## Usage
+
+### CLI Options
+
+```
+rustyfin [OPTIONS]
+
+Options:
+  -c, --config <PATH>   Config file path
+  -t, --theme <THEME>    Theme: catppuccin, dracula, gruvbox, nord, rosepine
+  -v, --verbose         Enable verbose logging
+  -h, --help            Show help
+  -V, --version         Show version
+```
+
+### Keyboard Controls
 
 | Key | Action |
 |-----|--------|
@@ -144,67 +219,20 @@ All indexers are toggleable in Settings:
 
 ---
 
-## Configuration
-
-Config file: `~/.config/rustyfin/config.json`
-
-```json
-{
-  "paths": {
-    "download_dir": "/home/user/Downloads",
-    "movies_dir": "/home/user/media/movies",
-    "shows_dir": "/home/user/media/tv",
-    "anime_dir": "/home/user/media/anime"
-  },
-  "qbittorrent": {
-    "host": "http://localhost:8080",
-    "username": "admin",
-    "password": "your-password"
-  },
-  "trakt": {
-    "username": "your-trakt-username",
-    "client_id": "your-trakt-client-id"
-  },
-  "settings": {
-    "quality_priority": ["2160p", "1080p"],
-    "max_size_gb": 10,
-    "min_seeds": 5,
-    "avoid_cam": true,
-    "search_indexers": ["yts", "tpb", "1337x"]
-  }
-}
-```
-
-You can edit this file directly or use the Settings panel in the TUI.
-
----
-
-## CLI Options
-
-```
-rf [OPTIONS]
-
-Options:
-  -c, --config <PATH>   Config file path [default: ~/.config/rustyfin/config.json]
-  -t, --theme <THEME>   Theme: catppuccin, dracula, gruvbox, nord, rosepine [default: gruvbox]
-  -v, --verbose         Enable verbose logging (writes to ~/.config/rustyfin/rustyfin.log)
-  -h, --help            Show help
-  -V, --version         Show version
-```
-
----
-
 ## Architecture
 
 ```
 rustyfin/
-  mediastation-cli/     -> CLI entrypoint (binary: rustyfin)
-  mediastation-core/    -> Core library:
-    ├── services/       -> qBittorrent, Trakt, Search, Organize, Subtitle, Library
-    ├── ui/             -> TUI app loop, rendering, state management
-    ├── models/         -> Data structures
-    └── config.rs       -> Configuration loading/saving
+├── mediastation-cli/      CLI entrypoint (binary: rustyfin)
+├── mediastation-core/     Core library:
+│   ├── services/          qBittorrent, Trakt, Search, Organize, Subtitle, Library, MediaInfo
+│   ├── ui/                TUI app loop, rendering, state management
+│   ├── models/            Data structures
+│   └── config.rs          Configuration loading/saving
+└── install.sh             Linux/macOS install script
 ```
+
+---
 
 ## Tech Stack
 
@@ -220,6 +248,12 @@ rustyfin/
 ## Contributing
 
 Pull requests welcome. Found a bug? Open an issue. Want a feature? Tell us.
+
+---
+
+## License
+
+MIT
 
 ---
 

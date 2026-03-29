@@ -50,7 +50,16 @@ fn main() -> anyhow::Result<()> {
         .create(true)
         .append(true)
         .open(log_dir.join("rustyfin.log"))
-        .unwrap_or_else(|_| std::fs::File::create("/dev/null").unwrap());
+        .unwrap_or_else(|_| {
+            #[cfg(windows)]
+            {
+                std::fs::File::create("NUL").unwrap()
+            }
+            #[cfg(not(windows))]
+            {
+                std::fs::File::create("/dev/null").unwrap()
+            }
+        });
 
     let log_level = match args.verbose {
         0 => "info",

@@ -1283,6 +1283,29 @@ fn handle_organize(
     }
 }
 
+/// Find mpv executable in PATH or common Windows locations
+fn find_mpv() -> Option<String> {
+    if let Ok(path) = which::which("mpv") {
+        return Some(path.to_string_lossy().to_string());
+    }
+
+    #[cfg(windows)]
+    {
+        let common_paths = [
+            r"C:\Program Files\mpv\mpv.exe",
+            r"C:\Program Files (x86)\mpv\mpv.exe",
+            r"C:\mpv\mpv.exe",
+        ];
+        for path in common_paths {
+            if std::path::Path::new(path).exists() {
+                return Some(path.to_string());
+            }
+        }
+    }
+
+    None
+}
+
 /// Play a video file using mpv (leaves TUI, runs mpv, returns to TUI)
 fn play_video<B: ratatui::backend::Backend + io::Write>(
     state: &mut AppState,
@@ -1291,9 +1314,17 @@ fn play_video<B: ratatui::backend::Backend + io::Write>(
     title: &str,
 ) {
     if !std::path::Path::new(video_path).exists() {
-        state.set_status(format!("File not found: {}", truncate_name(video_path, 50)));
+        state.set_error(format!("File not found: {}", truncate_name(video_path, 50)));
         return;
     }
+
+    let mpv_cmd = match find_mpv() {
+        Some(cmd) => cmd,
+        None => {
+            state.set_error("mpv not found. Please install mpv or add it to PATH".to_string());
+            return;
+        }
+    };
 
     state.set_status(format!("Playing: {}", title));
 
@@ -1305,7 +1336,7 @@ fn play_video<B: ratatui::backend::Backend + io::Write>(
     );
     let _ = crossterm::terminal::disable_raw_mode();
 
-    let result = std::process::Command::new("mpv")
+    let result = std::process::Command::new(&mpv_cmd)
         .arg(video_path)
         .status();
 
@@ -1322,7 +1353,7 @@ fn play_video<B: ratatui::backend::Backend + io::Write>(
     match result {
         Ok(s) if s.success() => state.set_status(format!("Finished: {}", title)),
         Ok(s) => state.set_status(format!("mpv exited: {}", s)),
-        Err(e) => state.set_status(format!("mpv failed: {}", e)),
+        Err(e) => state.set_error(format!("mpv failed: {}", e)),
     }
 }
 

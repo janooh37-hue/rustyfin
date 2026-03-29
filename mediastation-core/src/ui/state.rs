@@ -83,7 +83,7 @@ impl FocusedPanel {
     pub fn icon(&self) -> &'static str {
         match self {
             Self::Downloads => "↓",
-            Self::Organize => "⚙",
+            Self::Organize => "⧉",
             Self::Watchlist => "★",
             Self::Library => "◫",
             Self::Search => "⌕",
